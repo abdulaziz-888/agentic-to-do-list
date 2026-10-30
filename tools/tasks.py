@@ -11,14 +11,13 @@ tasks: dict[UUID, Task] = {}
 def create_task(
     title: str,
     description: str | None = None,
-    status: TaskStatus | None = None,
 ) -> Task:
     now = datetime.now(datetime.UTC)
     task = Task(
         id=uuid4(),
         title=title,
         description=description or "",
-        status=status or TaskStatus.TODO,
+        status=TaskStatus.TODO,
         created_at=now,
         updated_at=now,
     )
