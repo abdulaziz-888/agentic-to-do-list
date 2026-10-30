@@ -3,8 +3,6 @@ from datetime import datetime
 from enum import Enum
 from uuid import UUID
 
-from pydantic import BaseModel
-
 
 class TaskStatus(str, Enum):
     TODO = "TODO"
@@ -14,7 +12,7 @@ class TaskStatus(str, Enum):
 
 
 @dataclass
-class Task(BaseModel):
+class Task:
     id: UUID
     title: str
     description: str
