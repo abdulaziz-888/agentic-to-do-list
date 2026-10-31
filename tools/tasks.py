@@ -1,5 +1,5 @@
 
-from datetime import datetime
+import datetime
 from uuid import UUID, uuid4
 
 from domains.task import Task, TaskStatus
@@ -12,7 +12,7 @@ def create_task(
     title: str,
     description: str | None = None,
 ) -> Task:
-    now = datetime.now(datetime.UTC)
+    now = datetime.datetime.now(datetime.UTC)
     task = Task(
         id=uuid4(),
         title=title,
@@ -25,7 +25,7 @@ def create_task(
     return task
 
 def list_tasks() -> list[Task]:
-    return list[Task](tasks.values()) 
+    return list(tasks.values())
 
 def get_task(id: UUID) -> Task | None:
     return tasks.get(id)
@@ -39,7 +39,7 @@ def update_task(id: UUID, title: str | None = None, description: str | None = No
         task.title = title
     if description:
         task.description = description
-    task.updated_at = datetime.now(datetime.UTC)
+    task.updated_at = datetime.datetime.now(datetime.UTC)
     tasks[id] = task
     return task
 
@@ -48,9 +48,10 @@ def update_task_status(id: UUID, status: TaskStatus) -> Task | None:
     task = tasks.get(id)
     if not task:
         raise ValueError(f"Task with id {id} not found")
-    task.status = status
-    task.updated_at = datetime.now(datetime.UTC)
-    tasks[id] = task
+    if status != task.status:
+        task.status = status
+        task.updated_at = datetime.datetime.now(datetime.UTC)
+        tasks[id] = task
     return task
 
 def complete_task(id: UUID) -> Task | None:

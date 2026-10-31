@@ -9,7 +9,8 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 ## Current learning step
 
 Step 2: implement and understand the task-management tools before connecting
-them to an LLM.
+them to an LLM. The three core operations have now been reviewed and manually
+verified.
 
 The core operations under consideration are:
 
@@ -36,6 +37,12 @@ The core operations under consideration are:
   through explicit status operations.
 - UUID generation and timestamps are handled by `create_task`, not by the
   domain model.
+- Tool functions expect actual `UUID` objects. Python type annotations do not
+  convert string IDs at runtime; string validation and conversion will belong
+  at the future external-input boundary.
+- Repeating a status update with the current status is a no-op. In particular,
+  completing an already-completed task preserves `updated_at`, making the
+  operation idempotent.
 
 ## Completed work
 
@@ -43,16 +50,24 @@ The core operations under consideration are:
 - Verified that a `Task` can be constructed as a normal dataclass.
 - Removed the `status` argument from `create_task`.
 - Set the initial status explicitly to `TaskStatus.TODO`.
+- Simplified `list_tasks` to return a new list of the stored task objects.
+- Manually verified listing with one and multiple tasks and confirmed that
+  repeated calls do not modify storage.
+- Verified that `complete_task` changes a task to `COMPLETED` and advances its
+  update timestamp on the first call.
+- Verified that repeated completion does not change the task or its timestamp.
+- Verified that a missing task ID raises `ValueError`.
 
 ## Current limitations
 
 - Storage is process-local and disappears when the program exits.
 - There are no automated tests yet.
-- The existing tool functions have not all been reviewed or exercised.
+- Supporting operations beyond the three core tools have not all been fully
+  reviewed.
 - There is no LLM or agent execution loop.
 
 ## Next learning step
 
-Review `list_tasks` as a small, isolated exercise: clarify its intended return
-value, inspect its current implementation, and manually verify its behavior
-with zero, one, and multiple stored tasks.
+Add a small automated test suite for the three reviewed operations. This will
+turn the manually verified behavior into an executable contract before any LLM
+integration is introduced.
