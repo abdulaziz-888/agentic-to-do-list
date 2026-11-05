@@ -66,6 +66,38 @@ def test_complete_task_from_arguments_task_id_not_string() -> None:
     assert str(exc_info.value) == "task_id is required and must be a string"
 
 
+def test_create_task_from_arguments_no_title() -> None:
+    arguments = {
+        "description": "Description 1"
+    }
+    with pytest.raises(ValueError) as exc_info:
+        create_task_from_arguments(arguments)
+    assert tasks == {}
+    assert str(exc_info.value) == "title is required and must be a non-empty string"
+
+
+def test_create_task_from_arguments_title_empty() -> None:
+    arguments = {
+        "title": " ",
+        "description": "Description 1"
+    }
+    with pytest.raises(ValueError) as exc_info:
+        create_task_from_arguments(arguments)
+    assert tasks == {}
+    assert str(exc_info.value) == "title is required and must be a non-empty string"
+
+
+def test_create_task_from_arguments_title_not_string() -> None:
+    arguments = {
+        "title": 123,
+        "description": "Description 1"
+    }
+    with pytest.raises(ValueError) as exc_info:
+        create_task_from_arguments(arguments)
+    assert tasks == {}
+    assert str(exc_info.value) == "title is required and must be a non-empty string"
+
+
 def test_create_task_from_arguments_no_description() -> None:
     arguments = {
         "title": "Task 1"
@@ -75,4 +107,38 @@ def test_create_task_from_arguments_no_description() -> None:
     assert task.description == ""
     assert task.status == TaskStatus.TODO
     assert tasks[task.id] == task
-    
+
+
+def test_create_task_from_arguments_description_not_string() -> None:
+    arguments = {
+        "title": "Task 1",
+        "description": 123
+    }
+    with pytest.raises(ValueError) as exc_info:
+        create_task_from_arguments(arguments)
+    assert tasks == {}
+    assert str(exc_info.value) == "description must be a string"
+
+
+def test_create_task_from_arguments_description_none() -> None:
+    arguments = {
+        "title": "Task 1",
+        "description": None
+    }
+    with pytest.raises(ValueError) as exc_info:
+        create_task_from_arguments(arguments)
+    assert tasks == {}
+    assert str(exc_info.value) == "description must be a string"
+
+
+def test_create_task_from_arguments_valid() -> None:
+    arguments = {
+        "title": "Task 1",
+        "description": "Description 1"
+    }
+    task = create_task_from_arguments(arguments)
+    assert task.title == "Task 1"
+    assert task.description == "Description 1"
+    assert task.status == TaskStatus.TODO
+    assert tasks[task.id] == task
+    assert len(tasks) == 1

@@ -8,9 +8,12 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 2 is complete: the task-management tools have been implemented,
-understood, manually exercised, and covered by automated tests without LLM
-integration.
+Step 3 is in progress: define a boundary between external, JSON-compatible
+arguments and the typed Python task operations before introducing an LLM.
+
+Dedicated pytest instruction is complete. Automated tests will continue to be
+added as normal development work, but unit testing is no longer a separate
+learning objective.
 
 The core operations under consideration are:
 
@@ -22,8 +25,12 @@ The core operations under consideration are:
 
 - `domains/task.py` defines the `Task` domain entity and `TaskStatus` enum.
 - `tools/tasks.py` owns the in-memory task store and task operations.
+- `agent/tool_adapters.py` validates JSON-compatible arguments, converts them
+  to typed values, and delegates to the task operations.
 - `tests/test_tasks.py` contains the automated contract for the three core
   operations.
+- `tests/test_task_adapter.py` covers the external-input adapters.
+- `tests/conftest.py` provides shared in-memory storage isolation.
 - The in-memory store is a dictionary keyed by task UUID.
 
 ## Decisions made
@@ -45,6 +52,11 @@ The core operations under consideration are:
 - Repeating a status update with the current status is a no-op. In particular,
   completing an already-completed task preserves `updated_at`, making the
   operation idempotent.
+- Boundary adapters keep external validation and conversion separate from the
+  typed task operations.
+- Task titles must be non-empty strings and cannot contain only whitespace.
+- An omitted description becomes an empty string; an explicitly supplied
+  description must be a string.
 
 ## Completed work
 
@@ -67,6 +79,12 @@ The core operations under consideration are:
 - Learned how pytest collection, assertions, fixtures, setup/teardown with
   `yield`, and expected-exception checks work.
 - Confirmed the complete suite passes with `uv run python -m pytest -v`.
+- Added `complete_task_from_arguments`, including string-to-UUID conversion
+  and validation for missing, malformed, non-string, and unknown task IDs.
+- Added `create_task_from_arguments`, including title and optional-description
+  validation.
+- Expanded the suite to 17 passing tests covering the core operations and
+  input adapters.
 
 ## Current limitations
 
@@ -77,7 +95,6 @@ The core operations under consideration are:
 
 ## Next learning step
 
-Begin Step 3 by defining the boundary between external, JSON-compatible tool
-arguments and the typed Python task operations. Start with the conceptual
-contract and one small conversion exercise before introducing an LLM or the
-OpenAI SDK.
+Continue Step 3 with the output boundary: convert returned `Task` dataclasses
+and task lists into JSON-compatible values. After that boundary is understood,
+introduce the minimal tool dispatcher needed by an agent execution loop.

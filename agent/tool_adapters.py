@@ -17,8 +17,8 @@ def complete_task_from_arguments(arguments: dict[str, object]) -> Task:
 
 def create_task_from_arguments(arguments: dict[str, object]) -> Task:
     title = arguments.get("title")
-    if not title or not isinstance(title, str) or not title.strip():
-        raise ValueError("title is required and must be a string")
+    if not isinstance(title, str) or not title.strip():
+        raise ValueError("title is required and must be a non-empty string")
     try:
         description = arguments["description"]
     except KeyError:
