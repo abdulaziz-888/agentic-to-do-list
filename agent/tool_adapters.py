@@ -17,7 +17,7 @@ def complete_task_from_arguments(arguments: dict[str, object]) -> Task:
 
 def create_task_from_arguments(arguments: dict[str, object]) -> Task:
     title = arguments.get("title")
-    if not title.strip() or not isinstance(title, str):
+    if not title or not isinstance(title, str) or not title.strip():
         raise ValueError("title is required and must be a string")
     try:
         description = arguments["description"]
