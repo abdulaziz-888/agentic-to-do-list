@@ -7,4 +7,6 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = []
+dev = [
+    "pytest>=9.2.0",
+]

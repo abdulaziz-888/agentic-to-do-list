@@ -8,9 +8,9 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 2: implement and understand the task-management tools before connecting
-them to an LLM. The three core operations have now been reviewed and manually
-verified.
+Step 2 is complete: the task-management tools have been implemented,
+understood, manually exercised, and covered by automated tests without LLM
+integration.
 
 The core operations under consideration are:
 
@@ -22,6 +22,8 @@ The core operations under consideration are:
 
 - `domains/task.py` defines the `Task` domain entity and `TaskStatus` enum.
 - `tools/tasks.py` owns the in-memory task store and task operations.
+- `tests/test_tasks.py` contains the automated contract for the three core
+  operations.
 - The in-memory store is a dictionary keyed by task UUID.
 
 ## Decisions made
@@ -57,17 +59,25 @@ The core operations under consideration are:
   update timestamp on the first call.
 - Verified that repeated completion does not change the task or its timestamp.
 - Verified that a missing task ID raises `ValueError`.
+- Added pytest as a development dependency.
+- Added an autouse fixture that isolates tests by clearing the in-memory store
+  before and after each test.
+- Added four automated tests covering task creation, empty and populated task
+  listing, task completion, repeated completion, and unknown task IDs.
+- Learned how pytest collection, assertions, fixtures, setup/teardown with
+  `yield`, and expected-exception checks work.
+- Confirmed the complete suite passes with `uv run python -m pytest -v`.
 
 ## Current limitations
 
 - Storage is process-local and disappears when the program exits.
-- There are no automated tests yet.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
 - There is no LLM or agent execution loop.
 
 ## Next learning step
 
-Add a small automated test suite for the three reviewed operations. This will
-turn the manually verified behavior into an executable contract before any LLM
-integration is introduced.
+Begin Step 3 by defining the boundary between external, JSON-compatible tool
+arguments and the typed Python task operations. Start with the conceptual
+contract and one small conversion exercise before introducing an LLM or the
+OpenAI SDK.
