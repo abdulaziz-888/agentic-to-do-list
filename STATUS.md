@@ -8,12 +8,12 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 3's adapter boundary is complete: external arguments are validated and
-converted into typed Python values, while returned tasks are converted into
-JSON-compatible dictionaries before crossing the boundary.
+Step 3 is complete: the project now has a JSON-compatible adapter boundary and
+a minimal dispatcher that selects an adapter by its external tool name.
 
-The next part of Step 3 is to introduce the minimal tool dispatcher needed to
-select an adapter by its external tool name.
+The next learning step is to define the smallest execution-loop boundary that
+can accept a tool name and arguments, dispatch the call, and return a result
+without introducing an LLM or agent framework yet.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -32,9 +32,13 @@ The core operations under consideration are:
 - `agent/tool_adapters.py` validates JSON-compatible arguments, converts them
   to typed values, delegates to the task operations, and serializes returned
   tasks into JSON-compatible values.
+- `agent/tool_dispatcher.py` maps external tool names to the three core
+  adapters and invokes the selected adapter with the supplied arguments.
 - `tests/test_tasks.py` contains the automated contract for the three core
   operations.
 - `tests/test_task_adapter.py` covers the external-input adapters.
+- `tests/test_tool_dispatcher.py` covers successful routing for the three core
+  tools and rejection of unknown tool names.
 - `tests/conftest.py` provides shared in-memory storage isolation.
 - The in-memory store is a dictionary keyed by task UUID.
 
@@ -67,6 +71,12 @@ The core operations under consideration are:
   `TaskStatus`, and `datetime` objects internally.
 - All three core adapters share the same arguments-dictionary interface;
   list-task arguments are currently accepted and ignored.
+- The dispatcher registry is the single source of truth for allowed tool names
+  and their handlers.
+- The external dispatcher contract currently recognizes `create_task`,
+  `list_tasks`, and `complete_task`.
+- Unknown tool names raise `ValueError` without exposing the registry's
+  internal `KeyError` traceback.
 
 ## Completed work
 
@@ -99,8 +109,11 @@ The core operations under consideration are:
   dictionaries.
 - Added `list_tasks_from_arguments`, returning a JSON-compatible task list
   while preserving task order.
-- Expanded the suite to 20 passing tests covering the core operations and
-  input/output adapters.
+- Added a registry-based dispatcher for the create, list, and complete tools.
+- Added dispatcher tests covering all three successful routes and the unknown
+  tool error path.
+- Expanded the suite to 24 passing tests covering the core operations,
+  input/output adapters, and dispatcher.
 
 ## Current limitations
 
@@ -111,6 +124,6 @@ The core operations under consideration are:
 
 ## Next learning step
 
-Continue Step 3 with a minimal tool dispatcher that maps external tool names
-to the create, list, and complete adapters. Keep dispatch separate from input
-validation, task operations, and output serialization.
+Define a minimal execution-loop boundary around the dispatcher. Keep the first
+version deterministic and framework-free so the request/result flow is clear
+before considering an LLM or SDK integration.
