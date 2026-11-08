@@ -8,12 +8,13 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 3 is complete: the project now has a JSON-compatible adapter boundary and
-a minimal dispatcher that selects an adapter by its external tool name.
+Step 4 is complete: the project now has a deterministic execution-loop
+boundary that validates an ordered collection of tool calls, dispatches them
+sequentially, and returns their results in the same order.
 
-The next learning step is to define the smallest execution-loop boundary that
-can accept a tool name and arguments, dispatch the call, and return a result
-without introducing an LLM or agent framework yet.
+The next learning step is to introduce a task-repository boundary so storage
+can move from the process-local dictionary to a SQL-backed implementation
+without coupling the domain, tools, or agent layers to a particular database.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -34,11 +35,15 @@ The core operations under consideration are:
   tasks into JSON-compatible values.
 - `agent/tool_dispatcher.py` maps external tool names to the three core
   adapters and invokes the selected adapter with the supplied arguments.
+- `agent/execution_loop.py` validates and executes ordered tool calls through
+  the dispatcher, returning results in execution order.
 - `tests/test_tasks.py` contains the automated contract for the three core
   operations.
 - `tests/test_task_adapter.py` covers the external-input adapters.
 - `tests/test_tool_dispatcher.py` covers successful routing for the three core
   tools and rejection of unknown tool names.
+- `tests/test_execution_loop.py` covers ordered execution, shared state across
+  calls, fail-fast behavior, and malformed call structures.
 - `tests/conftest.py` provides shared in-memory storage isolation.
 - The in-memory store is a dictionary keyed by task UUID.
 
@@ -77,6 +82,14 @@ The core operations under consideration are:
   `list_tasks`, and `complete_task`.
 - Unknown tool names raise `ValueError` without exposing the registry's
   internal `KeyError` traceback.
+- Tool calls are dictionaries with a string `name` and an `arguments`
+  dictionary; `ToolCall` and `ToolResult` make those boundary shapes explicit.
+- The execution loop processes calls sequentially, so later calls observe
+  state changes made by earlier calls.
+- Execution is fail-fast: an invalid or unsuccessful call stops the sequence,
+  while effects from earlier successful calls remain applied.
+- Tool-call structure is validated explicitly at runtime rather than through
+  Pydantic or an agent framework.
 
 ## Completed work
 
@@ -112,18 +125,25 @@ The core operations under consideration are:
 - Added a registry-based dispatcher for the create, list, and complete tools.
 - Added dispatcher tests covering all three successful routes and the unknown
   tool error path.
-- Expanded the suite to 24 passing tests covering the core operations,
-  input/output adapters, and dispatcher.
+- Added a deterministic execution loop around the dispatcher.
+- Added explicit validation for missing or incorrectly typed tool names and
+  argument dictionaries.
+- Added execution-loop tests covering ordered create/list calls and fail-fast
+  behavior after a failed call.
+- Expanded the suite to 28 passing tests covering the core operations,
+  input/output adapters, dispatcher, and execution loop.
 
 ## Current limitations
 
 - Storage is process-local and disappears when the program exits.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
-- There is no LLM or agent execution loop.
+- There is no persistent database; the current store remains process-local.
+- There is no LLM-driven loop that requests tools and consumes their results.
 
 ## Next learning step
 
-Define a minimal execution-loop boundary around the dispatcher. Keep the first
-version deterministic and framework-free so the request/result flow is clear
-before considering an LLM or SDK integration.
+Define the smallest repository contract needed by the current task operations,
+then move the existing dictionary storage behind an in-memory repository
+implementation. This will establish the boundary needed for a later
+SQLAlchemy-backed SQLite implementation and eventual PostgreSQL migration.
