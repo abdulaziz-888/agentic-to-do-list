@@ -8,8 +8,12 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 3 is in progress: define a boundary between external, JSON-compatible
-arguments and the typed Python task operations before introducing an LLM.
+Step 3's adapter boundary is complete: external arguments are validated and
+converted into typed Python values, while returned tasks are converted into
+JSON-compatible dictionaries before crossing the boundary.
+
+The next part of Step 3 is to introduce the minimal tool dispatcher needed to
+select an adapter by its external tool name.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -26,7 +30,8 @@ The core operations under consideration are:
 - `domains/task.py` defines the `Task` domain entity and `TaskStatus` enum.
 - `tools/tasks.py` owns the in-memory task store and task operations.
 - `agent/tool_adapters.py` validates JSON-compatible arguments, converts them
-  to typed values, and delegates to the task operations.
+  to typed values, delegates to the task operations, and serializes returned
+  tasks into JSON-compatible values.
 - `tests/test_tasks.py` contains the automated contract for the three core
   operations.
 - `tests/test_task_adapter.py` covers the external-input adapters.
@@ -57,6 +62,11 @@ The core operations under consideration are:
 - Task titles must be non-empty strings and cannot contain only whitespace.
 - An omitted description becomes an empty string; an explicitly supplied
   description must be a string.
+- External task results represent UUIDs, statuses, and timestamps as strings.
+- The typed task operations and in-memory store continue to use `UUID`,
+  `TaskStatus`, and `datetime` objects internally.
+- All three core adapters share the same arguments-dictionary interface;
+  list-task arguments are currently accepted and ignored.
 
 ## Completed work
 
@@ -83,8 +93,14 @@ The core operations under consideration are:
   and validation for missing, malformed, non-string, and unknown task IDs.
 - Added `create_task_from_arguments`, including title and optional-description
   validation.
-- Expanded the suite to 17 passing tests covering the core operations and
-  input adapters.
+- Added `task_to_dict` and `tasks_to_dicts` to serialize typed task values at
+  the output boundary.
+- Updated the create and complete adapters to return JSON-compatible task
+  dictionaries.
+- Added `list_tasks_from_arguments`, returning a JSON-compatible task list
+  while preserving task order.
+- Expanded the suite to 20 passing tests covering the core operations and
+  input/output adapters.
 
 ## Current limitations
 
@@ -95,6 +111,6 @@ The core operations under consideration are:
 
 ## Next learning step
 
-Continue Step 3 with the output boundary: convert returned `Task` dataclasses
-and task lists into JSON-compatible values. After that boundary is understood,
-introduce the minimal tool dispatcher needed by an agent execution loop.
+Continue Step 3 with a minimal tool dispatcher that maps external tool names
+to the create, list, and complete adapters. Keep dispatch separate from input
+validation, task operations, and output serialization.
