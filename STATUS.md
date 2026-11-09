@@ -8,13 +8,13 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 4 is complete: the project now has a deterministic execution-loop
-boundary that validates an ordered collection of tool calls, dispatches them
-sequentially, and returns their results in the same order.
+Step 5 is complete: task storage now sits behind a repository protocol, and
+business operations live in an injected service instead of using a global
+dictionary. The adapter, dispatcher, and execution loop also receive their
+dependencies through constructors.
 
-The next learning step is to introduce a task-repository boundary so storage
-can move from the process-local dictionary to a SQL-backed implementation
-without coupling the domain, tools, or agent layers to a particular database.
+The next learning step is to add a SQLAlchemy-backed SQLite repository while
+keeping the domain, service, and agent contracts independent of the database.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -29,23 +29,22 @@ The core operations under consideration are:
 ## Current structure
 
 - `domains/task.py` defines the `Task` domain entity and `TaskStatus` enum.
-- `tools/tasks.py` owns the in-memory task store and task operations.
-- `agent/tool_adapters.py` validates JSON-compatible arguments, converts them
-  to typed values, delegates to the task operations, and serializes returned
-  tasks into JSON-compatible values.
-- `agent/tool_dispatcher.py` maps external tool names to the three core
-  adapters and invokes the selected adapter with the supplied arguments.
-- `agent/execution_loop.py` validates and executes ordered tool calls through
-  the dispatcher, returning results in execution order.
-- `tests/test_tasks.py` contains the automated contract for the three core
-  operations.
-- `tests/test_task_adapter.py` covers the external-input adapters.
-- `tests/test_tool_dispatcher.py` covers successful routing for the three core
-  tools and rejection of unknown tool names.
-- `tests/test_execution_loop.py` covers ordered execution, shared state across
-  calls, fail-fast behavior, and malformed call structures.
-- `tests/conftest.py` provides shared in-memory storage isolation.
-- The in-memory store is a dictionary keyed by task UUID.
+- `repositories/task_repository.py` defines the storage contract as a
+  `Protocol` with save, lookup, and ordered-list operations.
+- `repositories/in_memory_task_repository.py` implements that contract with a
+  private dictionary keyed by task UUID.
+- `services/task_service.py` owns task creation, retrieval, listing, and
+  idempotent completion behavior.
+- `agent/task_tool_adapters.py` validates JSON-compatible arguments, delegates
+  to `TaskService`, and serializes domain tasks into JSON-compatible values.
+- `agent/tool_dispatcher.py` owns the external tool-name registry and routes
+  calls through an injected `TaskToolAdapters` instance.
+- `agent/execution_loop.py` validates and executes ordered calls through an
+  injected `ToolDispatcher`.
+- `tests/conftest.py` composes a fresh repository, service, adapter,
+  dispatcher, and execution loop for each test that requests them.
+- Repository, service, adapter, dispatcher, and execution-loop tests cover
+  each layer through its public behavior.
 
 ## Decisions made
 
@@ -90,6 +89,19 @@ The core operations under consideration are:
   while effects from earlier successful calls remain applied.
 - Tool-call structure is validated explicitly at runtime rather than through
   Pydantic or an agent framework.
+- `TaskRepository` is a structural protocol so business logic depends on
+  storage capabilities rather than a concrete database implementation.
+- `InMemoryTaskRepository` returns tasks in insertion order and returns a new
+  list from `list_all` so callers cannot mutate its internal collection.
+- Saving an existing UUID replaces the stored task, defining the update
+  behavior that future repository implementations must preserve.
+- `TaskService` receives its repository once through constructor injection and
+  owns UUID generation, timestamps, initial status, and completion rules.
+- The service-backed adapter, dispatcher, and execution loop also use
+  constructor injection; the legacy global store and function-based path have
+  been removed.
+- Pytest fixtures compose fresh dependency graphs per test, replacing the old
+  autouse fixture that cleared shared global storage.
 
 ## Completed work
 
@@ -130,12 +142,21 @@ The core operations under consideration are:
   argument dictionaries.
 - Added execution-loop tests covering ordered create/list calls and fail-fast
   behavior after a failed call.
-- Expanded the suite to 28 passing tests covering the core operations,
-  input/output adapters, dispatcher, and execution loop.
+- Added `TaskRepository` and an isolated in-memory implementation with tests
+  for save/get, ordered listing, list isolation, and replacement by UUID.
+- Added `TaskService` with create, get, list, and idempotent complete behavior.
+- Migrated task adapters, the dispatcher, and the execution loop to injected
+  service-backed classes.
+- Migrated boundary-validation tests, including parametrized malformed-input
+  cases, to the service-backed path.
+- Removed the global task dictionary, legacy task functions, function-based
+  adapters and dispatcher, and their superseded tests.
+- The resulting suite has 28 passing tests across all active layers.
 
 ## Current limitations
 
-- Storage is process-local and disappears when the program exits.
+- The in-memory repository is process-local and disappears when the program
+  exits.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
 - There is no persistent database; the current store remains process-local.
@@ -143,7 +164,8 @@ The core operations under consideration are:
 
 ## Next learning step
 
-Define the smallest repository contract needed by the current task operations,
-then move the existing dictionary storage behind an in-memory repository
-implementation. This will establish the boundary needed for a later
-SQLAlchemy-backed SQLite implementation and eventual PostgreSQL migration.
+Add SQLAlchemy and implement the existing repository contract with SQLite.
+Keep ORM/database models separate from the `Task` domain dataclass, use an
+explicit ordering clause for task lists, and preserve the service and agent
+contracts unchanged. Follow that with migrations and an eventual PostgreSQL
+configuration once the SQL repository behavior is stable.
