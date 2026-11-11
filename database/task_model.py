@@ -32,4 +32,3 @@ class TaskRecord(Base):
         DateTime(timezone=True),
         nullable=False,
     )
-
