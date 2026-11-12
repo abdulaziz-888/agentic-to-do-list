@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+read -rsp "PostgreSQL password: " PGPASSWORD
+echo
+
+export PGPASSWORD
+export DATABASE_URL="postgresql+psycopg://agentic_todo@localhost/agentic_todo"
+
+trap 'unset PGPASSWORD DATABASE_URL' EXIT
+
+uv run alembic "$@"

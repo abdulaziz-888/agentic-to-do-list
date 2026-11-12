@@ -8,14 +8,16 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 6 is complete: SQLAlchemy now provides a SQLite-backed implementation of
-the existing task repository contract. ORM records, session construction, and
-domain mapping remain outside the domain and service layers, and the unchanged
-`TaskService` has been verified against the SQL repository.
+Step 8 is complete: PostgreSQL is available through the Psycopg driver,
+Alembic owns the durable database schema, and `app.py` is now the application
+composition root. It loads local configuration and connects the PostgreSQL
+engine, repository, service, adapters, dispatcher, and execution loop without
+changing their contracts.
 
-The current SQL tests use disposable in-memory SQLite databases. Durable
-file-based SQLite configuration and Alembic schema versioning are intentionally
-deferred until the SQL repository behavior is stable and understood.
+The unchanged `TaskService` and `SQLAlchemyTaskRepository` have also been smoke
+tested against the migrated PostgreSQL database. Existing automated repository
+tests remain isolated on disposable in-memory SQLite databases. The complete
+runtime graph has been verified against PostgreSQL with a read-only list call.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -41,6 +43,18 @@ The core operations under consideration are:
 - `database/task_mapper.py` translates between ORM records and domain tasks,
   including UTC normalization at the persistence boundary.
 - `database/session.py` creates session factories bound to injected engines.
+- `database/engine.py` creates an engine from the required `DATABASE_URL`
+  environment variable.
+- `migrations/` contains the Alembic environment and versioned PostgreSQL
+  schema migrations.
+- `scripts/alembic` runs Alembic against the local PostgreSQL database without
+  storing its password.
+- `scripts/postgresql_smoke` verifies the service and repository against
+  PostgreSQL and removes its temporary task afterward.
+- `app.py` loads local `.env` configuration and composes the complete
+  PostgreSQL-backed execution loop.
+- `.env.example` documents the required connection setting while the real
+  `.env` remains ignored and untracked.
 - `services/task_service.py` owns task creation, retrieval, listing, and
   idempotent completion behavior.
 - `agent/task_tool_adapters.py` validates JSON-compatible arguments, delegates
@@ -114,6 +128,14 @@ The core operations under consideration are:
   and service layers do not depend on the ORM.
 - Initial SQL development uses in-memory SQLite and `MetaData.create_all` only
   for disposable test schemas; durable schemas will use Alembic migrations.
+- Durable database configuration comes from `DATABASE_URL`; credentials are
+  not committed to Alembic configuration.
+- Local application startup loads `.env` at the composition boundary rather
+  than coupling environment-file discovery to the database layer.
+- Alembic imports the ORM models and compares `Base.metadata` with PostgreSQL
+  for migration autogeneration and schema checks.
+- PostgreSQL enum types are explicitly removed during downgrade because
+  dropping their table does not remove the independently created type.
 - SQL repository sessions are created by an injected `sessionmaker`, keeping
   engine configuration outside the repository.
 - SQL saves use `Session.merge` so saving an existing UUID replaces its row,
@@ -182,19 +204,28 @@ The core operations under consideration are:
 - Verified create, get, list, complete, and idempotent repeated completion by
   running the unchanged `TaskService` against `SQLAlchemyTaskRepository`.
 - Removed the unused Pydantic runtime dependency.
-- The resulting suite has 39 passing tests across all active layers.
+- Added Psycopg and an environment-driven database engine for PostgreSQL.
+- Added an Alembic migration environment and an initial migration for the task
+  enum and table.
+- Verified migration upgrade, downgrade, re-upgrade, current revision, and
+  model/schema parity against PostgreSQL.
+- Verified the existing service and SQL repository against PostgreSQL with a
+  self-cleaning smoke test.
+- Added safe local `.env` configuration with a committed placeholder example.
+- Added a tested application composition root for the PostgreSQL-backed
+  service and complete tool execution loop.
+- Verified the composed runtime against PostgreSQL with a read-only list call.
+- The resulting suite has 44 passing tests across all active layers.
 
 ## Current limitations
 
-- Both current runtime composition and SQL tests use process-local storage;
-  no durable database is configured yet.
+- There is no user-facing command-line or LLM-driven interface around the
+  composed execution loop yet.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
-- There is no Alembic migration environment or versioned schema yet.
-- There is no LLM-driven loop that requests tools and consumes their results.
 
 ## Next learning step
 
-Add durable file-based SQLite application composition, then introduce Alembic
-to version schema changes instead of relying on `MetaData.create_all`. Follow
-that with PostgreSQL configuration once the migration workflow is understood.
+Add a user-facing entry point and explicit application lifecycle around the
+composed execution loop, then introduce the LLM-driven loop that requests tools
+and consumes their results.

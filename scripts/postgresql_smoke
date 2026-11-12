@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+read -rsp "PostgreSQL password: " PGPASSWORD
+echo
+
+export PGPASSWORD
+export DATABASE_URL="postgresql+psycopg://agentic_todo@localhost/agentic_todo"
+
+trap 'unset PGPASSWORD DATABASE_URL' EXIT
+
+uv run python - <<'PY'
+from sqlalchemy import delete
+
+from database.engine import create_database_engine
+from database.session import create_session_factory
+from database.task_model import TaskRecord
+from repositories.sqlalchemy_task_repository import SQLAlchemyTaskRepository
+from services.task_service import TaskService
+
+engine = create_database_engine()
+session_factory = create_session_factory(engine)
+repository = SQLAlchemyTaskRepository(session_factory)
+service = TaskService(repository)
+task_id = None
+
+try:
+    created_task = service.create_task(
+        title="PostgreSQL smoke test",
+        description="Temporary task created by scripts/postgresql_smoke",
+    )
+    task_id = created_task.id
+
+    retrieved_task = service.get_task_by_id(task_id)
+    assert retrieved_task == created_task
+
+    print(f"PostgreSQL smoke test passed for task {task_id}")
+finally:
+    if task_id is not None:
+        with session_factory.begin() as session:
+            session.execute(delete(TaskRecord).where(TaskRecord.id == task_id))
+    engine.dispose()
+PY
