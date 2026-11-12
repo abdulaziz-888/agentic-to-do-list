@@ -8,16 +8,16 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 8 is complete: PostgreSQL is available through the Psycopg driver,
-Alembic owns the durable database schema, and `app.py` is now the application
-composition root. It loads local configuration and connects the PostgreSQL
-engine, repository, service, adapters, dispatcher, and execution loop without
-changing their contracts.
+Step 9 is complete: the application composition root now owns the SQLAlchemy
+engine explicitly, cleans it up after successful use and failed startup, and
+provides a context-managed `Application` for user-facing entry points.
 
 The unchanged `TaskService` and `SQLAlchemyTaskRepository` have also been smoke
 tested against the migrated PostgreSQL database. Existing automated repository
 tests remain isolated on disposable in-memory SQLite databases. The complete
 runtime graph has been verified against PostgreSQL with a read-only list call.
+`main.py` provides a minimal executable entry point that lists persisted tasks
+as JSON while guaranteeing engine cleanup.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -52,7 +52,9 @@ The core operations under consideration are:
 - `scripts/postgresql_smoke` verifies the service and repository against
   PostgreSQL and removes its temporary task afterward.
 - `app.py` loads local `.env` configuration and composes the complete
-  PostgreSQL-backed execution loop.
+  PostgreSQL-backed execution loop into a lifecycle-owning `Application`.
+- `main.py` is the current user-facing entry point and lists persisted tasks as
+  JSON within the application context manager.
 - `.env.example` documents the required connection setting while the real
   `.env` remains ignored and untracked.
 - `services/task_service.py` owns task creation, retrieval, listing, and
@@ -132,6 +134,8 @@ The core operations under consideration are:
   not committed to Alembic configuration.
 - Local application startup loads `.env` at the composition boundary rather
   than coupling environment-file discovery to the database layer.
+- The `Application` object owns both the engine and execution loop, supports
+  context-managed shutdown, and disposes the engine if composition fails.
 - Alembic imports the ORM models and compares `Base.metadata` with PostgreSQL
   for migration autogeneration and schema checks.
 - PostgreSQL enum types are explicitly removed during downgrade because
@@ -215,17 +219,19 @@ The core operations under consideration are:
 - Added a tested application composition root for the PostgreSQL-backed
   service and complete tool execution loop.
 - Verified the composed runtime against PostgreSQL with a read-only list call.
-- The resulting suite has 44 passing tests across all active layers.
+- Added explicit application ownership, context-managed engine shutdown, and
+  cleanup when startup composition fails.
+- Added a minimal executable entry point that lists tasks as JSON.
+- The resulting suite has 49 passing tests across all active layers.
 
 ## Current limitations
 
-- There is no user-facing command-line or LLM-driven interface around the
-  composed execution loop yet.
+- The current command-line entry point only lists tasks; it does not yet offer
+  interactive create or complete commands.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
 
 ## Next learning step
 
-Add a user-facing entry point and explicit application lifecycle around the
-composed execution loop, then introduce the LLM-driven loop that requests tools
-and consumes their results.
+Introduce the LLM-driven loop that requests tools and consumes their results,
+using the context-managed application lifecycle for startup and shutdown.
