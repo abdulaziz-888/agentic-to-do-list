@@ -8,13 +8,14 @@ LLM integration and agent frameworks are intentionally out of scope for now.
 
 ## Current learning step
 
-Step 5 is complete: task storage now sits behind a repository protocol, and
-business operations live in an injected service instead of using a global
-dictionary. The adapter, dispatcher, and execution loop also receive their
-dependencies through constructors.
+Step 6 is complete: SQLAlchemy now provides a SQLite-backed implementation of
+the existing task repository contract. ORM records, session construction, and
+domain mapping remain outside the domain and service layers, and the unchanged
+`TaskService` has been verified against the SQL repository.
 
-The next learning step is to add a SQLAlchemy-backed SQLite repository while
-keeping the domain, service, and agent contracts independent of the database.
+The current SQL tests use disposable in-memory SQLite databases. Durable
+file-based SQLite configuration and Alembic schema versioning are intentionally
+deferred until the SQL repository behavior is stable and understood.
 
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
@@ -33,6 +34,13 @@ The core operations under consideration are:
   `Protocol` with save, lookup, and ordered-list operations.
 - `repositories/in_memory_task_repository.py` implements that contract with a
   private dictionary keyed by task UUID.
+- `repositories/sqlalchemy_task_repository.py` implements the same contract
+  with short-lived SQLAlchemy sessions and explicit list ordering.
+- `database/base.py` defines the SQLAlchemy declarative base.
+- `database/task_model.py` defines the database-only `TaskRecord` mapping.
+- `database/task_mapper.py` translates between ORM records and domain tasks,
+  including UTC normalization at the persistence boundary.
+- `database/session.py` creates session factories bound to injected engines.
 - `services/task_service.py` owns task creation, retrieval, listing, and
   idempotent completion behavior.
 - `agent/task_tool_adapters.py` validates JSON-compatible arguments, delegates
@@ -102,6 +110,19 @@ The core operations under consideration are:
   been removed.
 - Pytest fixtures compose fresh dependency graphs per test, replacing the old
   autouse fixture that cleared shared global storage.
+- SQLAlchemy models remain separate from the domain dataclasses so the domain
+  and service layers do not depend on the ORM.
+- Initial SQL development uses in-memory SQLite and `MetaData.create_all` only
+  for disposable test schemas; durable schemas will use Alembic migrations.
+- SQL repository sessions are created by an injected `sessionmaker`, keeping
+  engine configuration outside the repository.
+- SQL saves use `Session.merge` so saving an existing UUID replaces its row,
+  matching the in-memory repository's update behavior.
+- SQL task lists are ordered by creation timestamp and then UUID, providing a
+  deterministic result when timestamps are equal.
+- SQLite returns naive datetime values, so the database mapper restores and
+  normalizes domain timestamps to aware UTC values.
+- Pydantic has been removed because no active layer uses it.
 
 ## Completed work
 
@@ -151,21 +172,29 @@ The core operations under consideration are:
   cases, to the service-backed path.
 - Removed the global task dictionary, legacy task functions, function-based
   adapters and dispatcher, and their superseded tests.
-- The resulting suite has 28 passing tests across all active layers.
+- Added SQLAlchemy as a runtime dependency and defined a typed `TaskRecord`
+  mapping with UUID, text, enum, and datetime columns.
+- Added in-memory SQLite schema, ORM round-trip, and session-factory tests.
+- Added pure domain-to-record and record-to-domain mappers with UTC timestamp
+  normalization.
+- Implemented and tested SQL repository save, replacement, lookup, and ordered
+  listing behavior.
+- Verified create, get, list, complete, and idempotent repeated completion by
+  running the unchanged `TaskService` against `SQLAlchemyTaskRepository`.
+- Removed the unused Pydantic runtime dependency.
+- The resulting suite has 39 passing tests across all active layers.
 
 ## Current limitations
 
-- The in-memory repository is process-local and disappears when the program
-  exits.
+- Both current runtime composition and SQL tests use process-local storage;
+  no durable database is configured yet.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
-- There is no persistent database; the current store remains process-local.
+- There is no Alembic migration environment or versioned schema yet.
 - There is no LLM-driven loop that requests tools and consumes their results.
 
 ## Next learning step
 
-Add SQLAlchemy and implement the existing repository contract with SQLite.
-Keep ORM/database models separate from the `Task` domain dataclass, use an
-explicit ordering clause for task lists, and preserve the service and agent
-contracts unchanged. Follow that with migrations and an eventual PostgreSQL
-configuration once the SQL repository behavior is stable.
+Add durable file-based SQLite application composition, then introduce Alembic
+to version schema changes instead of relying on `MetaData.create_all`. Follow
+that with PostgreSQL configuration once the migration workflow is understood.
