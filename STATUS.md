@@ -3,8 +3,8 @@
 ## Goal
 
 Build a personal task-management agent from first principles as a learning
-project. The initial implementation uses plain Python and in-memory storage;
-LLM integration and agent frameworks are intentionally out of scope for now.
+project. The application now has explicit domain, persistence, tool, and
+lifecycle boundaries ready for an LLM integration without an agent framework.
 
 ## Current learning step
 
@@ -22,6 +22,12 @@ as JSON while guaranteeing engine cleanup.
 Dedicated pytest instruction is complete. Automated tests will continue to be
 added as normal development work, but unit testing is no longer a separate
 learning objective.
+
+Local LLM setup is also complete. Ollama 0.40.16 is installed and reachable,
+and the quantized `llama3.2:3b` model runs successfully on the CPU-only,
+16-GB-RAM development machine. A direct Ollama API request verified that the
+model can select a `create_task` function and emit its title as structured tool
+arguments. No LLM application code or dependency has been added yet.
 
 The core operations under consideration are:
 
@@ -149,6 +155,13 @@ The core operations under consideration are:
 - SQLite returns naive datetime values, so the database mapper restores and
   normalizes domain timestamps to aware UTC values.
 - Pydantic has been removed because no active layer uses it.
+- Ollama is the initial local inference runtime so development does not require
+  paid API credits.
+- `llama3.2:3b` is the initial model because its tool support and approximately
+  2-GB quantized size suit the CPU-only, 16-GB-RAM development environment.
+- The future LLM boundary will remain provider-independent; Ollama will be the
+  first concrete adapter rather than a dependency of the domain or service
+  layers.
 
 ## Completed work
 
@@ -223,15 +236,23 @@ The core operations under consideration are:
   cleanup when startup composition fails.
 - Added a minimal executable entry point that lists tasks as JSON.
 - The resulting suite has 49 passing tests across all active layers.
+- Installed and verified Ollama 0.40.16 and downloaded `llama3.2:3b`.
+- Verified local CPU inference with `llama3.2:3b`.
+- Verified native structured tool calling: the model selected `create_task`
+  and produced `{"title": "Buy milk"}` from a natural-language request.
 
 ## Current limitations
 
 - The current command-line entry point only lists tasks; it does not yet offer
   interactive create or complete commands.
+- Ollama configuration is not yet represented in `.env.example` or application
+  composition; that belongs to the LLM integration milestone.
 - Supporting operations beyond the three core tools have not all been fully
   reviewed.
 
 ## Next learning step
 
-Introduce the LLM-driven loop that requests tools and consumes their results,
-using the context-managed application lifecycle for startup and shutdown.
+Introduce a provider-independent LLM boundary and test its conversation and
+tool-call contracts with a fake implementation before adding an Ollama adapter.
+Then connect that adapter to the existing dispatcher and context-managed
+application lifecycle.
