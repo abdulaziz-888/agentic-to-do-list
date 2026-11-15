@@ -1,16 +1,22 @@
-from agent.llm_provider import LLMProvider, LLMResponse, LLMToolCall, LLMToolDefinition
+from agent.llm_provider import (
+    LLMMessage,
+    LLMProvider,
+    LLMResponse,
+    LLMToolCall,
+    LLMToolDefinition,
+)
 from agent.task_tool_definitions import TASK_TOOL_DEFINITIONS
 
 
 class FakeLLMProvider:
     def __init__(self, llm_response: LLMResponse) -> None:
         self.llm_response = llm_response
-        self.received_messages: list[dict[str, str]]
+        self.received_messages: list[LLMMessage]
         self.received_tools: list[LLMToolDefinition]
 
     def chat(
         self,
-        messages: list[dict[str, str]],
+        messages: list[LLMMessage],
         tools: list[LLMToolDefinition],
     ) -> LLMResponse:
         self.received_messages = messages
@@ -19,7 +25,12 @@ class FakeLLMProvider:
 
 
 def test_llm_provider_chat_contract() -> None:
-    messages = [{"role": "user", "content": "Create a task to buy milk"}]
+    messages = [
+        LLMMessage(
+            role="user",
+            content="Create a task to buy milk",
+        )
+    ]
 
     tools = TASK_TOOL_DEFINITIONS
 
@@ -51,7 +62,12 @@ def test_llm_provider_text_response() -> None:
         content="You have no tasks.",
         tool_calls=[],
     )
-    messages = [{"role": "user", "content": "What tasks do I have?"}]
+    messages = [
+        LLMMessage(
+            role="user",
+            content="What tasks do I have?",
+        )
+    ]
     fake_provider = FakeLLMProvider(response)
     provider: LLMProvider = fake_provider
 

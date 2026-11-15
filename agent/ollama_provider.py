@@ -13,6 +13,9 @@ class OllamaProvider:
         self._client = client
         self._model = model
 
+    def close(self) -> None:
+        self._client.close()
+
     @staticmethod
     def llm_message_to_ollama(
         message: LLMMessage,

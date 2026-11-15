@@ -13,6 +13,15 @@ from agent.task_tool_definitions import (
 )
 
 
+def test_close_closes_client() -> None:
+    client = Mock(spec=Client)
+    provider = OllamaProvider(client=client, model="llama3.2:3b")
+
+    provider.close()
+
+    client.close.assert_called_once_with()
+
+
 @pytest.mark.parametrize(
     ("message", "converted_message"),
     [
