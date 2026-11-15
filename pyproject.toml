@@ -3,6 +3,7 @@ name = "agentic-to-do"
 version = "0.1.0"
 requires-python = ">=3.14"
 dependencies = [
+    "ollama>=0.6.3",
     "psycopg[binary]>=3.3.9",
     "python-dotenv>=1.2.4",
     "sqlalchemy>=2.1.8",

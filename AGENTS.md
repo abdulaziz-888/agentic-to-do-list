@@ -5,6 +5,9 @@
   suite before choosing the next exercise.
 - Teach the project one small exercise at a time. Do not jump ahead to later
   layers or combine multiple learning objectives unless the user asks.
+- Write test cases for the user by default. Ask the user to write a particular
+  test only when authoring that test is itself important to the current
+  learning objective.
 - After the user completes an exercise, review their implementation, explain
   any correctness or design issues, and run the relevant focused tests plus
   the full suite when appropriate.
@@ -17,6 +20,10 @@
   small steps.
 - Update `STATUS.md` at completed milestone boundaries, not after every small
   exercise.
+- Use the project's own task-agent CLI alongside `STATUS.md` to persist, list,
+  and complete actionable work items when the local database and Ollama are
+  available. Keep architectural and milestone documentation in `STATUS.md`
+  manual.
 - Before committing a milestone, review the complete diff, verify the suite,
   and confirm there are no stale imports or superseded paths.
 - When the user asks for a resume prompt for a new chat or milestone, begin
